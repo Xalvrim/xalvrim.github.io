@@ -38,6 +38,10 @@ body[data-mode="game"] .switch{border-radius:6px}
 body[data-mode="game"] .switch .knob{transform:translateX(100%);border-radius:4px;background:var(--a1)}
 body[data-mode="game"] .switch button[aria-pressed="true"]{color:#1A120A}
 
+/* selo WontFix (transicao Dev -> GameDev) */
+#wfSeal{position:fixed;inset:0;width:100%;height:100%;z-index:60;display:none;cursor:pointer}
+#wfSeal.on{display:block}
+.seal-boot #wfSeal{display:block}
 /* transition wipe */
 .wipe{position:fixed;inset:0;z-index:50;pointer-events:none;display:grid;grid-template-columns:repeat(6,1fr)}
 .wipe i{transform:scaleY(0);transform-origin:top;background:#0B0A10}
@@ -188,6 +192,8 @@ body[data-mode="game"] footer{color:#0B1A3A}
 </style>
 </head>
 <body data-mode="dev">
+<script>if(location.hash==="#gamedev")document.documentElement.className+=" seal-boot";</script>
+<canvas id="wfSeal" aria-hidden="true"></canvas>
 <header class="bar"><div class="wrap">
 <a class="brand" href="#">xalvrim</a>
 <div class="switch" role="group" aria-label="Trocar perfil">
@@ -354,11 +360,81 @@ var body=document.body,bDev=document.getElementById('bDev'),bGame=document.getEl
 var wipe=document.querySelector('.wipe'),lbl=document.querySelector('.wipe-label');
 var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function apply(m){body.dataset.mode=m;bDev.setAttribute('aria-pressed',m==='dev');bGame.setAttribute('aria-pressed',m==='game');document.title=m==='dev'?'Álvaro Ramos · Engenheiro de Software':'Álvaro Ramos · Game Developer';if(m==='game')Shmup.show();}
+
+/* ===== Selo WontFix: a abertura do estudio, usada como transicao para o GameDev =====
+   Adaptado do modulo abertura.js do kit da WontFix. Cores e geometria sao as da marca. */
+var WF_ACIDO='#cdfa2e',WF_BUG='#e0492f',WF_LEMA="we know. we're keeping it.",WF_FONT="ui-monospace,SFMono-Regular,Consolas,Menlo,monospace",WF_BREU='#0a0b0a';
+var WF_BEATS={pop:.32,xEntra:.20,gira:.48,desliza:.54,lema:.38,segura:.85},WF_ORDEM=['pop','xEntra','gira','desliza','lema','segura'];
+var WF_DUR=WF_ORDEM.reduce(function(a,n){return a+WF_BEATS[n]},0),WF_IN=.28,WF_OUT=.45,WF_TAU=Math.PI*2;
+function wClamp(v,a,b){return v<a?a:v>b?b:v}
+function wEase(t){return 1-Math.pow(1-t,3)}
+function wSmooth(t){return t*t*(3-2*t)}
+function wPop(g){return g>=1?1:wEase(g)*(1+Math.sin(g*Math.PI)*.22)}
+function wRGB(c){return[1,3,5].map(function(i){return parseInt(c.substr(i,2),16)})}
+function wMix(a,b,t){var pa=wRGB(a),pb=wRGB(b);return'rgb('+pa.map(function(v,i){return Math.round(v+(pb[i]-v)*t)}).join(',')+')'}
+var wBril=[];
+function wBrilhar(x,y,n,cor,f){for(var i=0;i<n;i++){var a=Math.random()*WF_TAU,v=f*(.35+Math.random()*.9);wBril.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,t:0,dur:.4+Math.random()*.5,r:1.2+Math.random()*2.6,cor:cor})}}
+function wPasso(dt){for(var i=wBril.length-1;i>=0;i--){var p=wBril[i];p.t+=dt;if(p.t>p.dur){wBril.splice(i,1);continue}p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.94;p.vy=p.vy*.94+26*dt}}
+function wPilula(c,x,y,w,h,cor){var r=h/2;c.fillStyle=cor;c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.arc(x+w-r,y+r,r,-Math.PI/2,Math.PI/2);c.lineTo(x+r,y+h);c.arc(x+r,y+r,r,Math.PI/2,-Math.PI/2);c.closePath();c.fill()}
+function wX(c,cx,cy,tam,giro,gros,cor){c.save();c.translate(cx,cy);c.rotate(giro);c.strokeStyle=cor;c.lineWidth=gros;c.lineCap='round';c.beginPath();c.moveTo(-tam,-tam);c.lineTo(tam,tam);c.moveTo(tam,-tam);c.lineTo(-tam,tam);c.stroke();c.restore()}
+var wTocou=false;
+function wDesenhar(ctx,W,H,t){
+ var cx=W/2,cy=H/2,f=0,k=0,acc=0,i;
+ for(i=0;i<WF_ORDEM.length;i++){var d=WF_BEATS[WF_ORDEM[i]];if(t<acc+d){f=i;k=(t-acc)/d;break}acc+=d;f=i;k=1}
+ var beat=WF_ORDEM[f],R=Math.min(W,H)*.115,fonte,Lt,lc,folga,Lp;
+ for(var tt=0;tt<6;tt++){fonte=R*1.06;ctx.font='500 '+fonte.toFixed(1)+'px '+WF_FONT;Lt=ctx.measureText('wontfix').width;lc=Lt/7;folga=R-lc/2;Lp=Lt+folga*2;if(Lp<=W*.82)break;R*=W*.82/Lp}
+ var px0=cx-Lp/2,txt0=px0+folga,xIni=px0+R,xFim=txt0+Lt-lc/2;
+ var raio=0,giro=0,desliza=0,cor=WF_BUG,xVis=0,letras=0;
+ if(f===0){raio=R*wPop(k);if(!wTocou&&k>.02){wTocou=true;wBrilhar(xIni,cy,30,WF_BUG,240)}}
+ else if(f===1){raio=R;xVis=wPop(k)}
+ else if(f===2){raio=R;xVis=1;giro=wEase(k)*Math.PI;cor=wMix(WF_BUG,WF_ACIDO,wSmooth(k));if(k>.42&&k<.52)wBrilhar(xIni,cy,2,WF_ACIDO,170)}
+ else{raio=R;xVis=1;giro=Math.PI;cor=WF_ACIDO;desliza=letras=(beat==='desliza')?wEase(k):1}
+ var xPos=xIni+(xFim-xIni)*desliza;
+ if(raio>.5){var esq=(f===0)?xIni-raio:px0,larg=Math.max(raio*2,xPos+raio-esq);ctx.save();ctx.shadowColor='rgba(205,250,46,.34)';ctx.shadowBlur=(f>=2?30:0);wPilula(ctx,esq,cy-raio,larg,raio*2,cor);ctx.restore()}
+ if(beat==='desliza'&&Math.random()<.6)wBrilhar(xPos+raio*.5,cy+(Math.random()-.5)*raio*1.2,1,WF_ACIDO,140);
+ if(letras>.01){var pal='wontfi';ctx.font='500 '+fonte.toFixed(1)+'px '+WF_FONT;ctx.textAlign='center';ctx.textBaseline='middle';
+  for(i=0;i<pal.length;i++){var ce=txt0+lc*(i+.5),ki=wClamp((xPos-ce)/(lc*.9),0,1);if(ki>.01){ctx.globalAlpha=ki;ctx.fillStyle=WF_BREU;ctx.fillText(pal[i],ce,cy-(1-ki)*raio*.3);ctx.globalAlpha=1}}
+  ctx.textAlign='start';ctx.textBaseline='alphabetic'}
+ if(xVis>.01){var tf=fonte*.265;wX(ctx,xPos,cy,tf*(1.8-.8*desliza)*(.55+.45*xVis),giro,fonte*(.125-.023*desliza),WF_BREU)}
+ if(beat==='lema'||beat==='segura'){ctx.globalAlpha=(beat==='lema')?wClamp(k*1.7,0,1):1;ctx.font='400 '+(fonte*.30).toFixed(1)+'px '+WF_FONT;ctx.fillStyle='#7d857a';ctx.textAlign='center';ctx.fillText(WF_LEMA,cx,cy+R*2.7);ctx.textAlign='start';ctx.globalAlpha=1}
+ for(i=0;i<wBril.length;i++){var p=wBril[i],kk=1-p.t/p.dur;ctx.globalAlpha=kk*kk;ctx.fillStyle=p.cor;ctx.beginPath();ctx.arc(p.x,p.y,p.r*kk,0,WF_TAU);ctx.fill()}
+ ctx.globalAlpha=1;
+}
+var sealCv=document.getElementById('wfSeal');
+/* aoMeio: roda quando a tela esta toda coberta (hora de trocar de pagina). aoFim: quando o selo sai. */
+function playSeal(aoMeio,aoFim,jaCoberto){
+ var ctx=sealCv.getContext('2d'),dpr=Math.min(window.devicePixelRatio||1,2),W=innerWidth,H=innerHeight;
+ sealCv.width=Math.round(W*dpr);sealCv.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+ sealCv.style.opacity=jaCoberto?'1':'0';sealCv.className='on';document.documentElement.classList.remove('seal-boot');
+ var t0=null,last=null,meio=false,skipT=null,skipBase=0,curT=0;wBril.length=0;wTocou=false;
+ var inicio=jaCoberto?0:WF_IN,tSaida=inicio+WF_DUR;
+ function pular(){if(skipT===null){skipT=performance.now();skipBase=curT}}
+ function tecla(e){if(e.key==='Escape'||e.key==='Enter'||e.key===' '||e.code==='Space'){e.preventDefault();pular()}}
+ function fechar(){sealCv.className='';sealCv.style.opacity='';sealCv.onclick=null;document.removeEventListener('keydown',tecla,true);if(aoFim)aoFim()}
+ sealCv.onclick=pular;document.addEventListener('keydown',tecla,true);
+ function quadro(now){
+  if(t0===null){t0=now;last=now}
+  var dt=Math.min((now-last)/1000,.05);last=now;
+  var t=(now-t0)/1000;curT=t;
+  if(skipT!==null&&skipBase<tSaida)t=tSaida+(now-skipT)/1000;
+  if(!meio&&t>=inicio){meio=true;if(aoMeio)aoMeio()}
+  wPasso(dt);
+  ctx.globalAlpha=1;ctx.fillStyle=WF_BREU;ctx.fillRect(0,0,W,H);
+  wDesenhar(ctx,W,H,Math.min(Math.max(0,t-inicio),WF_DUR));
+  if(t<inicio)sealCv.style.opacity=wClamp(t/WF_IN,0,1).toFixed(3);
+  else if(t<=tSaida)sealCv.style.opacity='1';
+  else sealCv.style.opacity=wClamp(1-(t-tSaida)/WF_OUT,0,1).toFixed(3);
+  if(t>=tSaida+WF_OUT){fechar();return}
+  requestAnimationFrame(quadro);
+ }
+ requestAnimationFrame(quadro);
+}
 var busy=false;
 function go(m){
  if(busy||body.dataset.mode===m)return;
  try{history.replaceState(null,'',m==='game'?'#gamedev':'#dev');}catch(e){}
  if(reduce){apply(m);window.scrollTo(0,0);return;}
+ if(m==='game'){busy=true;playSeal(function(){apply(m);window.scrollTo(0,0)},function(){busy=false});return;}
  busy=true;lbl.textContent=m==='game'?'Modo GameDev':'Modo Dev';
  var bars=wipe.children;for(var i=0;i<bars.length;i++)bars[i].style.animationDelay=(i*0.05)+'s';
  wipe.className='wipe in';lbl.className='wipe-label show';
@@ -463,7 +539,7 @@ window.Shmup=(function(){
  return{show:function(){requestAnimationFrame(function(){size();run();});}};
 })();
 
-if(location.hash==='#gamedev')apply('game');
+if(location.hash==='#gamedev'){apply('game');if(reduce){document.documentElement.classList.remove('seal-boot');}else{busy=true;playSeal(null,function(){busy=false},true);}}
 })();
 </script>
 </body>
